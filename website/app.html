@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LinkStash App</title>
+    <link rel="stylesheet" href="app-styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Auth Pages -->
+        <div id="auth-container" class="auth-container">
+            <!-- Login Page -->
+            <div id="login-page" class="auth-page active">
+                <div class="auth-box">
+                    <h1>LinkStash</h1>
+                    <p>Seu Hub Pessoal de Links</p>
+                    
+                    <form id="login-form" class="auth-form">
+                        <div class="form-group">
+                            <label for="login-email">Email</label>
+                            <input type="email" id="login-email" required placeholder="seu@email.com">
+                        </div>
+                        <div class="form-group">
+                            <label for="login-password">Senha</label>
+                            <input type="password" id="login-password" required placeholder="Sua senha">
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-block">Entrar</button>
+                    </form>
+
+                    <p class="auth-switch">
+                        Não tem conta? 
+                        <a href="#" onclick="switchAuth('register')">Registre-se</a>
+                    </p>
+                </div>
+            </div>
+
+            <!-- Register Page -->
+            <div id="register-page" class="auth-page">
+                <div class="auth-box">
+                    <h1>Crie sua Conta</h1>
+                    <p>Comece seu hub de links</p>
+                    
+                    <form id="register-form" class="auth-form">
+                        <div class="form-group">
+                            <label for="register-username">Nome de Usuário</label>
+                            <input type="text" id="register-username" required placeholder="seu-usuario">
+                        </div>
+                        <div class="form-group">
+                            <label for="register-email">Email</label>
+                            <input type="email" id="register-email" required placeholder="seu@email.com">
+                        </div>
+                        <div class="form-group">
+                            <label for="register-name">Nome Completo</label>
+                            <input type="text" id="register-name" required placeholder="Seu Nome">
+                        </div>
+                        <div class="form-group">
+                            <label for="register-password">Senha</label>
+                            <input type="password" id="register-password" required placeholder="Mínimo 6 caracteres">
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-block">Criar Conta</button>
+                    </form>
+
+                    <p class="auth-switch">
+                        Já tem conta? 
+                        <a href="#" onclick="switchAuth('login')">Faça login</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dashboard -->
+        <div id="dashboard-container" class="dashboard-container" style="display: none;">
+            <!-- Sidebar -->
+            <aside class="sidebar">
+                <div class="sidebar-header">
+                    <h2><i class="fas fa-link"></i> LinkStash</h2>
+                </div>
+                
+                <nav class="sidebar-nav">
+                    <a href="#" class="nav-item active" onclick="goToPage('dashboard')">
+                        <i class="fas fa-home"></i> Dashboard
+                    </a>
+                    <a href="#" class="nav-item" onclick="goToPage('links')">
+                        <i class="fas fa-link"></i> Meus Links
+                    </a>
+                    <a href="#" class="nav-item" onclick="goToPage('analytics')">
+                        <i class="fas fa-chart-bar"></i> Análises
+                    </a>
+                    <a href="#" class="nav-item" onclick="goToPage('profile')">
+                        <i class="fas fa-user"></i> Meu Perfil
+                    </a>
+                    <a href="#" class="nav-item" onclick="goToPage('settings')">
+                        <i class="fas fa-cog"></i> Configurações
+                    </a>
+                </nav>
+
+                <div class="sidebar-footer">
+                    <button class="btn-logout" onclick="logout()">
+                        <i class="fas fa-sign-out-alt"></i> Sair
+                    </button>
+                </div>
+            </aside>
+
+            <!-- Main Content -->
+            <main class="dashboard-main">
+                <!-- Header -->
+                <header class="dashboard-header">
+                    <div class="header-left">
+                        <h1 id="page-title">Dashboard</h1>
+                    </div>
+                    <div class="header-right">
+                        <div class="user-info">
+                            <span id="user-name">Usuário</span>
+                            <img id="user-avatar" src="https://via.placeholder.com/40" alt="Avatar">
+                        </div>
+                    </div>
+                </header>
+
+                <!-- Dashboard Page -->
+                <div id="dashboard-page" class="page-content active">
+                    <div class="dashboard-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-link"></i>
+                            </div>
+                            <div class="stat-info">
+                                <p class="stat-label">Total de Links</p>
+                                <h3 class="stat-value" id="stat-links">0</h3>
+                            </div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-mouse"></i>
+                            </div>
+                            <div class="stat-info">
+                                <p class="stat-label">Total de Cliques</p>
+                                <h3 class="stat-value" id="stat-clicks">0</h3>
+                            </div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-eye"></i>
+                            </div>
+                            <div class="stat-info">
+                                <p class="stat-label">Visitantes</p>
+                                <h3 class="stat-value" id="stat-visitors">0</h3>
+                            </div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-star"></i>
+                            </div>
+                            <div class="stat-info">
+                                <p class="stat-label">Plano Atual</p>
+                                <h3 class="stat-value" id="stat-plan">Básico</h3>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-section">
+                        <h2>Link Mais Acessado</h2>
+                        <div id="top-link" class="top-link-card">
+                            <p class="empty-state">Nenhum link acessado ainda</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Links Page -->
+                <div id="links-page" class="page-content">
+                    <div class="page-header">
+                        <h2>Meus Links</h2>
+                        <button class="btn btn-primary" onclick="openAddLinkModal()">
+                            <i class="fas fa-plus"></i> Adicionar Link
+                        </button>
+                    </div>
+
+                    <div id="links-list" class="links-list">
+                        <p class="empty-state">Você não tem links ainda. Crie um novo!</p>
+                    </div>
+                </div>
+
+                <!-- Analytics Page -->
+                <div id="analytics-page" class="page-content">
+                    <div class="page-header">
+                        <h2>Análises</h2>
+                    </div>
+
+                    <div class="analytics-container">
+                        <div class="chart-box">
+                            <h3>Cliques por Dia</h3>
+                            <canvas id="clicks-chart"></canvas>
+                        </div>
+
+                        <div class="chart-box">
+                            <h3>Dispositivos</h3>
+                            <canvas id="devices-chart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="analytics-table">
+                        <h3>Últimas Atividades</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Link</th>
+                                    <th>Data</th>
+                                    <th>Dispositivo</th>
+                                    <th>País</th>
+                                </tr>
+                            </thead>
+                            <tbody id="activities-tbody">
+                                <tr>
+                                    <td colspan="4" class="empty-state">Sem atividades</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Profile Page -->
+                <div id="profile-page" class="page-content">
+                    <div class="profile-header">
+                        <img id="profile-avatar" src="https://via.placeholder.com/100" alt="Avatar">
+                        <div class="profile-info">
+                            <h2 id="profile-name">Nome do Usuário</h2>
+                            <p id="profile-username">@usuario</p>
+                        </div>
+                    </div>
+
+                    <form id="profile-form" class="profile-form">
+                        <div class="form-group">
+                            <label for="profile-display-name">Nome Completo</label>
+                            <input type="text" id="profile-display-name" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="profile-bio">Bio</label>
+                            <textarea id="profile-bio" placeholder="Fale um pouco sobre você"></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="profile-avatar-url">URL do Avatar</label>
+                            <input type="url" id="profile-avatar-url">
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">Salvar Perfil</button>
+                    </form>
+
+                    <div class="profile-link">
+                        <h3>Seu Link Público</h3>
+                        <div class="copy-box">
+                            <input type="text" id="public-link" readonly>
+                            <button type="button" class="btn btn-secondary" onclick="copyToClipboard()">
+                                <i class="fas fa-copy"></i> Copiar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Settings Page -->
+                <div id="settings-page" class="page-content">
+                    <h2>Configurações</h2>
+                    
+                    <div class="settings-section">
+                        <h3>Segurança</h3>
+                        <button class="btn btn-secondary" onclick="changePassword()">
+                            <i class="fas fa-key"></i> Alterar Senha
+                        </button>
+                    </div>
+
+                    <div class="settings-section">
+                        <h3>Plano</h3>
+                        <p id="current-plan">Plano: Básico</p>
+                        <button class="btn btn-primary" onclick="upgradePlan()">
+                            <i class="fas fa-star"></i> Fazer Upgrade
+                        </button>
+                    </div>
+
+                    <div class="settings-section danger">
+                        <h3>Zona de Perigo</h3>
+                        <button class="btn btn-danger" onclick="deleteAccount()">
+                            <i class="fas fa-trash"></i> Deletar Conta
+                        </button>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Add Link Modal -->
+    <div id="add-link-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Adicionar Novo Link</h2>
+                <button class="modal-close" onclick="closeAddLinkModal()">&times;</button>
+            </div>
+            <form id="add-link-form" class="modal-form">
+                <div class="form-group">
+                    <label for="link-title">Título</label>
+                    <input type="text" id="link-title" required placeholder="Ex: Meu Blog">
+                </div>
+                <div class="form-group">
+                    <label for="link-url">URL</label>
+                    <input type="url" id="link-url" required placeholder="https://exemplo.com">
+                </div>
+                <div class="form-group">
+                    <label for="link-description">Descrição</label>
+                    <textarea id="link-description" placeholder="Descreva seu link"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="link-icon">Ícone</label>
+                    <select id="link-icon">
+                        <option value="link">Link</option>
+                        <option value="globe">Globe</option>
+                        <option value="camera">Câmera</option>
+                        <option value="music">Música</option>
+                        <option value="code">Código</option>
+                    </select>
+                </div>
+                <div class="modal-buttons">
+                    <button type="button" class="btn btn-secondary" onclick="closeAddLinkModal()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Adicionar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="app-script.js"></script>
+</body>
+</html>
