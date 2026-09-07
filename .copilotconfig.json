@@ -1,0 +1,9 @@
+{
+  "copilot": {
+    "autoConfirm": true,
+    "autoCommit": true,
+    "batchOperations": true,
+    "maxFilesPerBatch": 10,
+    "verbose": false
+  }
+}
