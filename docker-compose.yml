@@ -1,88 +1,45 @@
-version: '3.8'
-
 services:
-  # PostgreSQL Database
   postgres:
-    image: postgres:15-alpine
+    image: postgres:17-alpine
     container_name: linkstash-postgres
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: linkstash
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-linkstash_dev_change_me}
       POSTGRES_DB: linkstash
-    ports:
-      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./backend/migrations:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
+      test: ["CMD-SHELL", "pg_isready -U linkstash -d linkstash"]
+      interval: 5s
       timeout: 5s
-      retries: 5
-    networks:
-      - linkstash-network
+      retries: 10
+    networks: [linkstash]
 
-  # Redis Cache
-  redis:
-    image: redis:7-alpine
-    container_name: linkstash-redis
-    ports:
-      - "6379:6379"
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - linkstash-network
-
-  # Backend API
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    build: ./backend
     container_name: linkstash-backend
     environment:
-      NODE_ENV: development
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/linkstash
-      REDIS_URL: redis://redis:6379
-      JWT_SECRET: ${JWT_SECRET:-your_secret_key_change_in_production}
+      NODE_ENV: production
+      DATABASE_URL: postgresql://linkstash:${POSTGRES_PASSWORD:-linkstash_dev_change_me}@postgres:5432/linkstash
+      JWT_SECRET: ${JWT_SECRET:-change-this-secret}
       API_PORT: 5000
-    ports:
-      - "5000:5000"
+    ports: ["5000:5000"]
     depends_on:
       postgres:
         condition: service_healthy
-      redis:
-        condition: service_healthy
-    volumes:
-      - ./backend:/app
-      - /app/node_modules
-    networks:
-      - linkstash-network
-    command: npm run dev
+    networks: [linkstash]
 
-  # Frontend
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
+    build: ./frontend
     container_name: linkstash-frontend
     environment:
-      REACT_APP_API_URL: http://localhost:5000/api
-    ports:
-      - "3000:3000"
-    depends_on:
-      - backend
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    networks:
-      - linkstash-network
-    command: npm start
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:5000/api}
+    ports: ["3000:4173"]
+    depends_on: [backend]
+    networks: [linkstash]
 
 volumes:
   postgres_data:
-
 networks:
-  linkstash-network:
-    driver: bridge
+  linkstash:
