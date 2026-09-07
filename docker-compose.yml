@@ -2,9 +2,10 @@ services:
   postgres:
     image: postgres:17-alpine
     container_name: linkstash-postgres
+    restart: unless-stopped
     environment:
       POSTGRES_USER: linkstash
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-linkstash_dev_change_me}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: linkstash
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -19,12 +20,14 @@ services:
   backend:
     build: ./backend
     container_name: linkstash-backend
+    restart: unless-stopped
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgresql://linkstash:${POSTGRES_PASSWORD:-linkstash_dev_change_me}@postgres:5432/linkstash
-      JWT_SECRET: ${JWT_SECRET:-change-this-secret}
+      DATABASE_URL: postgresql://linkstash:${POSTGRES_PASSWORD}@postgres:5432/linkstash
+      JWT_SECRET: ${JWT_SECRET}
       API_PORT: 5000
-    ports: ["5000:5000"]
+      FRONTEND_URL: ${FRONTEND_URL}
+    expose: ["5000"]
     depends_on:
       postgres:
         condition: service_healthy
@@ -33,13 +36,31 @@ services:
   frontend:
     build: ./frontend
     container_name: linkstash-frontend
-    environment:
-      VITE_API_URL: ${VITE_API_URL:-http://localhost:5000/api}
-    ports: ["3000:4173"]
+    restart: unless-stopped
+    expose: ["80"]
     depends_on: [backend]
+    networks: [linkstash]
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: linkstash-caddy
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: [frontend]
     networks: [linkstash]
 
 volumes:
   postgres_data:
+  caddy_data:
+  caddy_config:
+
 networks:
   linkstash:
