@@ -4,10 +4,12 @@ import helmet from 'helmet';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { randomBytes } from 'crypto';
+import path from 'path';
+import { existsSync } from 'fs';
 import { Pool } from 'pg';
 
 const app = express();
-const port = Number(process.env.API_PORT || 5000);
+const port = Number(process.env.PORT || process.env.API_PORT || 5000);
 const jwtSecret = process.env.JWT_SECRET || 'change-me-in-production';
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
@@ -273,6 +275,39 @@ app.get('/api/analytics', auth, async (req: AuthRequest, res) => {
   );
   res.json(r.rows);
 });
+
+// Link curto direto: https://linkstash.me/meu-alias
+app.get('/:slug', async (req, res, next) => {
+  try {
+    const slug = normalizeSlug(req.params.slug);
+    if (!validSlug(slug)) return next();
+
+    const r = await pool.query(
+      'SELECT id,url,expires_at FROM links WHERE LOWER(slug)=LOWER($1)',
+      [slug]
+    );
+    if (!r.rowCount) return next();
+    if (r.rows[0].expires_at && new Date(r.rows[0].expires_at).getTime() <= Date.now()) {
+      return res.status(410).send('Link expirado');
+    }
+    return trackAndRedirect(req, res, r.rows[0]);
+  } catch {
+    return next();
+  }
+});
+
+const staticDir = path.join(process.cwd(), 'public');
+const indexFile = path.join(staticDir, 'index.html');
+
+if (existsSync(staticDir)) {
+  app.use(express.static(staticDir));
+  app.use((req, res, next) => {
+    if (req.method === 'GET' && !req.path.startsWith('/api/') && existsSync(indexFile)) {
+      return res.sendFile(indexFile);
+    }
+    next();
+  });
+}
 
 app.use((_req, res) => res.status(404).json({ error: 'Not found' }));
 
