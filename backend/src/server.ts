@@ -4,10 +4,12 @@ import helmet from 'helmet';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { randomBytes } from 'crypto';
+import path from 'path';
+import { existsSync } from 'fs';
 import { Pool } from 'pg';
 
 const app = express();
-const port = Number(process.env.API_PORT || 5000);
+const port = Number(process.env.PORT || process.env.API_PORT || 5000);
 const jwtSecret = process.env.JWT_SECRET || 'change-me-in-production';
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
@@ -61,10 +63,59 @@ async function uniqueRandomSlug() {
 }
 
 async function ensureSchema() {
+  await pool.query('CREATE EXTENSION IF NOT EXISTS pgcrypto');
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      username VARCHAR(50) UNIQUE NOT NULL,
+      email VARCHAR(255) UNIQUE NOT NULL,
+      password_hash VARCHAR(255) NOT NULL,
+      display_name VARCHAR(255),
+      bio TEXT,
+      avatar VARCHAR(255),
+      created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS links (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      title VARCHAR(255) NOT NULL,
+      url VARCHAR(2048) NOT NULL,
+      description TEXT,
+      icon VARCHAR(50),
+      slug VARCHAR(64),
+      expires_at TIMESTAMPTZ,
+      link_order INTEGER DEFAULT 0,
+      clicks INTEGER DEFAULT 0,
+      created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS analytics (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      link_id UUID NOT NULL REFERENCES links(id) ON DELETE CASCADE,
+      user_agent VARCHAR(500),
+      ip_address VARCHAR(45),
+      referrer VARCHAR(2048),
+      country VARCHAR(100),
+      device_type VARCHAR(50),
+      clicked_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
   await pool.query('ALTER TABLE links ADD COLUMN IF NOT EXISTS slug VARCHAR(64)');
   await pool.query('ALTER TABLE links ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ');
   await pool.query("UPDATE links SET slug = SUBSTRING(REPLACE(id::text, '-', '') FROM 1 FOR 12) WHERE slug IS NULL OR slug = ''");
   await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS idx_links_slug_lower ON links(LOWER(slug))');
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_links_user_id ON links(user_id)');
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_analytics_link_id ON analytics(link_id)');
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_analytics_clicked_at ON analytics(clicked_at)');
 }
 
 async function trackAndRedirect(req: Request, res: Response, link: any) {
@@ -273,6 +324,39 @@ app.get('/api/analytics', auth, async (req: AuthRequest, res) => {
   );
   res.json(r.rows);
 });
+
+// Link curto direto: https://linkstash.me/meu-alias
+app.get('/:slug', async (req, res, next) => {
+  try {
+    const slug = normalizeSlug(req.params.slug);
+    if (!validSlug(slug)) return next();
+
+    const r = await pool.query(
+      'SELECT id,url,expires_at FROM links WHERE LOWER(slug)=LOWER($1)',
+      [slug]
+    );
+    if (!r.rowCount) return next();
+    if (r.rows[0].expires_at && new Date(r.rows[0].expires_at).getTime() <= Date.now()) {
+      return res.status(410).send('Link expirado');
+    }
+    return trackAndRedirect(req, res, r.rows[0]);
+  } catch {
+    return next();
+  }
+});
+
+const staticDir = path.join(process.cwd(), 'public');
+const indexFile = path.join(staticDir, 'index.html');
+
+if (existsSync(staticDir)) {
+  app.use(express.static(staticDir));
+  app.use((req, res, next) => {
+    if (req.method === 'GET' && !req.path.startsWith('/api/') && existsSync(indexFile)) {
+      return res.sendFile(indexFile);
+    }
+    next();
+  });
+}
 
 app.use((_req, res) => res.status(404).json({ error: 'Not found' }));
 
